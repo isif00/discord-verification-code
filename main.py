@@ -48,7 +48,7 @@ async def on_ready():
               
 @app_commands.describe(your_id = "Student ID", your_name = "name", your_surname = "surname")
 async def login(interaction: discord.Interaction, your_id: str, your_name: str, your_surname: str):
-    role = interaction.guild.get_role(section_role)
+    sec_role = interaction.guild.get_role(section_role)
     
     section_spreadsheet = pd.read_csv(GOOGLE_SHEET_LINK)
     section_Ids_List = section_spreadsheet["ID"].tolist()
@@ -69,7 +69,7 @@ async def login(interaction: discord.Interaction, your_id: str, your_name: str, 
 
         #interact with the student
         await interaction.response.send_message(f"{interaction.author.mention} WELCOME TO THE: `{your_name}`")
-        await interaction.user.add_roles(role)
+        await interaction.user.add_roles(sec_role)
     if str(your_id) in section_Ids_List and (str(your_id) in db_list):
         await interaction.response.send_message(f"{interaction.author.mention} WTF ARE U DOING !")
     else:
@@ -78,14 +78,19 @@ async def login(interaction: discord.Interaction, your_id: str, your_name: str, 
 #the doom command
 @bot.event
 async def on_message(message):
+    #check that the bot can't reply to himself
     if message.author == bot.user:
         return
+
+    #starting the doom command
     if message.content.startswith(DDAY_COMMAND):
-        verified_role = interaction.guild.get_role(verified_role)
+        #getting the verified role
+        ver_role = message.guild.get_role(verified_role)
+        #setting permissions
         overwrite = discord.PermissionOverwrite()
         overwrite.view_channel = False
         for guild in bot.guilds:
             for channel in guild.channels:
-                await channel.set_permissions(message.guild.verified_role, overwrite=overwrite)
+                await channel.set_permissions(ver_role, overwrite=overwrite)
             
 bot.run(TOKEN)
